@@ -317,9 +317,6 @@ func (app *virtHandlerApp) Run() {
 		podIsolationDetector,
 	)
 
-	promErrCh := make(chan error)
-	go app.runPrometheusServer(promErrCh)
-
 	consoleHandler := rest.NewConsoleHandler(
 		podIsolationDetector,
 		vmiInformer,
@@ -365,6 +362,8 @@ func (app *virtHandlerApp) Run() {
 	go vmController.Run(10, stop)
 
 	errCh := make(chan error)
+	promErrCh := make(chan error)
+	go app.runPrometheusServer(promErrCh)
 	go app.runServer(errCh, consoleHandler, lifecycleHandler)
 
 	// wait for one of the servers to exit
