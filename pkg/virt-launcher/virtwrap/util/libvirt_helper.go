@@ -73,6 +73,23 @@ var PausedReasonTranslationMap = map[libvirt.DomainPausedReason]api.StateChangeR
 	libvirt.DOMAIN_PAUSED_POSTCOPY_FAILED: api.ReasonPausedPostcopyFailed,
 }
 
+const launcherUser uint32 = 1000
+
+type LibvirtWraper struct {
+	user uint32
+}
+
+func NewLibvirtWraper(runAsNonRoot bool) *LibvirtWraper {
+	var user uint32 = 0
+	if runAsNonRoot {
+		user = launcherUser
+	}
+
+	return &LibvirtWraper{
+		user: user,
+	}
+}
+
 func ConvState(status libvirt.DomainState) api.LifeCycle {
 	return LifeCycleTranslationMap[status]
 }
@@ -176,7 +193,7 @@ func GetDomainSpecWithFlags(dom cli.VirDomain, flags libvirt.DomainXMLFlags) (*a
 	return domain, nil
 }
 
-func StartLibvirt(stopChan chan struct{}) {
+func (l LibvirtWraper) StartLibvirt(stopChan chan struct{}) {
 	// we spawn libvirt from virt-launcher in order to ensure the libvirtd+qemu process
 	// doesn't exit until virt-launcher is ready for it to. Virt-launcher traps signals
 	// to perform special shutdown logic. These processes need to live in the same
@@ -186,6 +203,11 @@ func StartLibvirt(stopChan chan struct{}) {
 		for {
 			exitChan := make(chan struct{})
 			cmd := exec.Command("/usr/sbin/libvirtd")
+			cmd.SysProcAttr = &syscall.SysProcAttr{
+				Credential: &syscall.Credential{
+					Uid: l.user,
+				},
+			}
 
 			// connect libvirt's stderr to our own stdout in order to see the logs in the container logs
 			reader, err := cmd.StderrPipe()
@@ -232,7 +254,7 @@ func StartLibvirt(stopChan chan struct{}) {
 	}()
 }
 
-func StartVirtlog(stopChan chan struct{}, domainName string) {
+func (l LibvirtWraper) StartVirtlog(stopChan chan struct{}, domainName string) {
 	go func() {
 		for {
 			var args []string
@@ -340,13 +362,13 @@ func NewDomainFromName(name string, vmiUID types.UID) *api.Domain {
 	return domain
 }
 
-func SetupLibvirt() error {
+func (l LibvirtWraper) SetupLibvirt() error {
 
 	// TODO: setting permissions and owners is not part of device plugins.
 	// Configure these manually right now on "/dev/kvm"
 	stats, err := os.Stat("/dev/kvm")
 	if err == nil {
-		s, ok := stats.Sys().(*syscall.Stat_t)
+		_, ok := stats.Sys().(*syscall.Stat_t)
 		if !ok {
 			return fmt.Errorf("can't convert file stats to unix/linux stats")
 		}
@@ -358,7 +380,7 @@ func SetupLibvirt() error {
 		if err != nil {
 			return err
 		}
-		err = os.Chown("/dev/kvm", int(s.Uid), gid)
+		err = os.Chown("/dev/kvm", int(l.user), gid)
 		if err != nil {
 			return err
 		}
@@ -395,7 +417,7 @@ func SetupLibvirt() error {
 		return err
 	}
 	defer libvirtConf.Close()
-	_, err = libvirtConf.WriteString("log_outputs = \"1:stderr\"\n")
+	_, err = libvirtConf.WriteString("log_outputs = \"1:stderr\"\nunix_sock_group = \"libvirt\"\nunix_sock_rw_perms = \"0770\"\n")
 	if err != nil {
 		return err
 	}

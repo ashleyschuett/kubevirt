@@ -27,6 +27,7 @@ go_library(
         "//vendor/k8s.io/apimachinery/pkg/types:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/util/wait:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/watch:go_default_library",
+        "//vendor/k8s.io/utils/pointer:go_default_library",
         "//vendor/libvirt.org/libvirt-go:go_default_library",
     ],
 )
@@ -38,6 +39,111 @@ go_binary(
     embed = [":go_default_library"],
     visibility = ["//visibility:public"],
     x_defs = version_x_defs(),
+)
+
+load("@io_bazel_rules_docker//contrib:passwd.bzl", "passwd_entry", "passwd_tar")
+load("@bazel_tools//tools/build_defs/pkg:pkg.bzl", "pkg_tar")
+
+passwd_entry(
+    name = "launcher",
+    gid = 1000,
+    home = "/home/launcher/",
+    uid = 1000,
+    username = "launcher",
+    create_home = True,
+)
+
+passwd_entry(
+    name = "root",
+    gid = 0,
+    home = "/root",
+    shell = "/bin/bash",
+    uid = 0,
+    username = "root",
+)
+
+passwd_entry(
+    name = "qemu",
+    gid = 107,
+    home = "/",
+    shell = "/sbin/nologin",
+    uid = 107,
+    username = "qemu",
+)
+
+passwd_tar(
+    name = "passwd",
+    entries = [
+        ":root",
+        ":qemu",
+        ":launcher",
+    ],
+    passwd_file_pkg_dir = "etc",
+)
+
+load("@io_bazel_rules_docker//contrib:group.bzl", "group_file", "group_entry")
+
+group_entry(
+   name = "root_group",
+   groupname = "root",
+   gid = 0,
+)
+
+group_entry(
+   name = "launcher_group",
+   groupname = "launcher",
+   gid = 1000,
+   users = [
+    "launcher",
+    "qemu",
+   ],
+)
+
+group_entry(
+   name = "qemu_group",
+   groupname = "qemu",
+   gid = 107,
+   users = [
+    "launcher",
+    "qemu",
+   ],
+)
+
+group_entry(
+   name = "libvirt_group",
+   groupname = "libvirt",
+   gid = 992,
+   users = [
+    "launcher",
+   ],
+)
+
+group_entry(
+   name = "kvm_group",
+   groupname = "kvm",
+   gid = 36,
+   users = [
+    "qemu",
+    "launcher",
+   ],
+)
+
+group_file(
+    name = "group",
+    entries = [
+        ":root_group",
+        ":launcher_group",
+        ":qemu_group",
+        ":libvirt_group",
+        ":kvm_group",
+    ],
+)
+
+pkg_tar(
+    name = "group_tar",
+    srcs = [":group"],
+    mode = "0o644",
+    package_dir = "etc",
 )
 
 load(
@@ -52,6 +158,10 @@ container_image(
         "//conditions:default": "@libvirt//image",
     }),
     directory = "/",
+    tars = [
+      ":passwd",
+      ":group_tar",
+      ],
     files = ["//:get-version"],
 )
 

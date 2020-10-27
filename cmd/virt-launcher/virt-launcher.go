@@ -36,6 +36,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	utilwait "k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/utils/pointer"
 
 	v1 "kubevirt.io/client-go/api/v1"
 	"kubevirt.io/client-go/log"
@@ -57,6 +58,10 @@ import (
 )
 
 const defaultStartTimeout = 3 * time.Minute
+
+var (
+	runWithNonRoot *bool = pointer.BoolPtr(false)
+)
 
 func init() {
 	// must registry the event impl before doing anything else.
@@ -108,6 +113,12 @@ func startCmdServer(socketPath string,
 
 func createLibvirtConnection() virtcli.Connection {
 	libvirtUri := "qemu:///system"
+	if *runWithNonRoot == true {
+		os.Setenv("XDG_CACHE_HOME", "/home/launcher/.cache")
+		os.Setenv("XDG_CONFIG_HOME", "/home/launcher/.config")
+		libvirtUri = "qemu+unix:///session?socket=/home/launcher/.cache/libvirt/libvirt-sock"
+	}
+
 	domainConn, err := virtcli.NewConnection(libvirtUri, "", "", 10*time.Second)
 	if err != nil {
 		panic(fmt.Sprintf("failed to connect to libvirtd: %v", err))
@@ -305,6 +316,7 @@ func main() {
 	namespace := pflag.String("namespace", "", "Namespace of the VirtualMachineInstance")
 	gracePeriodSeconds := pflag.Int("grace-period-seconds", 30, "Grace period to observe before sending SIGTERM to vm process")
 	useEmulation := pflag.Bool("use-emulation", false, "Use software emulation")
+	runWithNonRoot = pflag.Bool("run-as-nonroot", false, "Run libvirtd with the 'launcher' user")
 	hookSidecars := pflag.Uint("hook-sidecars", 0, "Number of requested hook sidecars, virt-launcher will wait for all of them to become available")
 	noFork := pflag.Bool("no-fork", false, "Fork and let virt-launcher watch itself to react to crashes if set to false")
 	lessPVCSpaceToleration := pflag.Int("less-pvc-space-toleration", 0, "Toleration in percent when PVs' available space is smaller than requested")
@@ -345,14 +357,16 @@ func main() {
 	// Start libvirtd, virtlogd, and establish libvirt connection
 	stopChan := make(chan struct{})
 
-	err = util.SetupLibvirt()
+	l := util.NewLibvirtWraper(*runWithNonRoot)
+	err = l.SetupLibvirt()
 	if err != nil {
 		panic(err)
 	}
-	util.StartLibvirt(stopChan)
+
+	l.StartLibvirt(stopChan)
 	// only single domain should be present
 	domainName := api.VMINamespaceKeyFunc(vm)
-	util.StartVirtlog(stopChan, domainName)
+	l.StartVirtlog(stopChan, domainName)
 
 	domainConn := createLibvirtConnection()
 	defer domainConn.Close()
