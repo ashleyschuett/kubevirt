@@ -46,6 +46,7 @@ import (
 	ephemeraldisk "kubevirt.io/kubevirt/pkg/ephemeral-disk"
 	"kubevirt.io/kubevirt/pkg/hooks"
 	"kubevirt.io/kubevirt/pkg/ignition"
+	vUtil "kubevirt.io/kubevirt/pkg/util"
 	cmdclient "kubevirt.io/kubevirt/pkg/virt-handler/cmd-client"
 	virtlauncher "kubevirt.io/kubevirt/pkg/virt-launcher"
 	notifyclient "kubevirt.io/kubevirt/pkg/virt-launcher/notify-client"
@@ -114,9 +115,9 @@ func startCmdServer(socketPath string,
 func createLibvirtConnection() virtcli.Connection {
 	libvirtUri := "qemu:///system"
 	if *runWithNonRoot == true {
-		os.Setenv("XDG_CACHE_HOME", "/home/launcher/.cache")
-		os.Setenv("XDG_CONFIG_HOME", "/home/launcher/.config")
-		libvirtUri = "qemu+unix:///session?socket=/home/launcher/.cache/libvirt/libvirt-sock"
+		os.Setenv("XDG_CACHE_HOME", "/home/virt/.cache")
+		os.Setenv("XDG_CONFIG_HOME", "/home/virt/.config")
+		libvirtUri = "qemu+unix:///session?socket=/home/virt/.cache/libvirt/libvirt-sock"
 	}
 
 	domainConn, err := virtcli.NewConnection(libvirtUri, "", "", 10*time.Second)
@@ -164,7 +165,7 @@ func initializeDirs(virtShareDir string,
 	mask := syscall.Umask(0)
 	defer syscall.Umask(mask)
 
-	err := virtlauncher.InitializePrivateDirectories(filepath.Join("/var/run/kubevirt-private", uid))
+	err := virtlauncher.InitializePrivateDirectories(filepath.Join(vUtil.VirtPrivateDir, uid))
 
 	if err != nil {
 		panic(err)
@@ -190,7 +191,7 @@ func initializeDirs(virtShareDir string,
 		panic(err)
 	}
 
-	err = virtlauncher.InitializeDisksDirectories(filepath.Join("/var/run/kubevirt-private", "vm-disks"))
+	err = virtlauncher.InitializeDisksDirectories(filepath.Join(vUtil.VirtPrivateDir, "vm-disks"))
 	if err != nil {
 		panic(err)
 	}
@@ -221,6 +222,8 @@ func waitForDomainUUID(timeout time.Duration, events chan watch.Event, stop chan
 	ticker := time.NewTicker(timeout).C
 	select {
 	case <-ticker:
+		fmt.Println("going to hang for 10 hours")
+		time.Sleep(10 * time.Hour)
 		panic(fmt.Errorf("timed out waiting for domain to be defined"))
 	case e := <-events:
 		if e.Object != nil && e.Type == watch.Added {
@@ -232,6 +235,8 @@ func waitForDomainUUID(timeout time.Duration, events chan watch.Event, stop chan
 			if ok && domain.ObjectMeta.DeletionTimestamp != nil {
 				return nil
 			}
+		} else {
+			fmt.Printf("%+v \n", e)
 		}
 	case <-stop:
 		return nil
@@ -308,15 +313,15 @@ func cleanupContainerDiskDirectory(ephemeralDiskDir string) {
 
 func main() {
 	qemuTimeout := pflag.Duration("qemu-timeout", defaultStartTimeout, "Amount of time to wait for qemu")
-	virtShareDir := pflag.String("kubevirt-share-dir", "/var/run/kubevirt", "Shared directory between virt-handler and virt-launcher")
+	virtShareDir := pflag.String("kubevirt-share-dir", "/home/virt/kubevirt", "Shared directory between virt-handler and virt-launcher")
 	ephemeralDiskDir := pflag.String("ephemeral-disk-dir", "/var/run/kubevirt-ephemeral-disks", "Base directory for ephemeral disk data")
-	containerDiskDir := pflag.String("container-disk-dir", "/var/run/kubevirt/container-disks", "Base directory for container disk data")
+	containerDiskDir := pflag.String("container-disk-dir", "/home/virt/container-disks", "Base directory for container disk data")
 	name := pflag.String("name", "", "Name of the VirtualMachineInstance")
 	uid := pflag.String("uid", "", "UID of the VirtualMachineInstance")
 	namespace := pflag.String("namespace", "", "Namespace of the VirtualMachineInstance")
 	gracePeriodSeconds := pflag.Int("grace-period-seconds", 30, "Grace period to observe before sending SIGTERM to vm process")
 	useEmulation := pflag.Bool("use-emulation", false, "Use software emulation")
-	runWithNonRoot = pflag.Bool("run-as-nonroot", false, "Run libvirtd with the 'launcher' user")
+	runWithNonRoot = pflag.Bool("run-as-nonroot", false, "Run libvirtd with the 'virt' user")
 	hookSidecars := pflag.Uint("hook-sidecars", 0, "Number of requested hook sidecars, virt-launcher will wait for all of them to become available")
 	noFork := pflag.Bool("no-fork", false, "Fork and let virt-launcher watch itself to react to crashes if set to false")
 	lessPVCSpaceToleration := pflag.Int("less-pvc-space-toleration", 0, "Toleration in percent when PVs' available space is smaller than requested")
@@ -326,7 +331,7 @@ func main() {
 	qemuAgentUserInterval := pflag.Duration("qemu-agent-user-interval", 10, "Interval in seconds between consecutive qemu agent calls for user command")
 	qemuAgentVersionInterval := pflag.Duration("qemu-agent-version-interval", 300, "Interval in seconds between consecutive qemu agent calls for version command")
 	// set new default verbosity, was set to 0 by glog
-	goflag.Set("v", "2")
+	goflag.Set("v", "9")
 
 	pflag.CommandLine.AddGoFlag(goflag.CommandLine.Lookup("v"))
 	pflag.Parse()

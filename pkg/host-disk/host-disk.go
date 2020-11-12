@@ -36,7 +36,7 @@ import (
 	"kubevirt.io/kubevirt/pkg/util/types"
 )
 
-var pvcBaseDir = "/var/run/kubevirt-private/vmi-disks"
+var pvcBaseDir = "/home/virt/kubevirt-private/vmi-disks"
 
 const (
 	EventReasonToleratedSmallPV = "ToleratedSmallPV"

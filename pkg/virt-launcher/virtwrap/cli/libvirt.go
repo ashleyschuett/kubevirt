@@ -382,7 +382,7 @@ func NewConnection(uri string, user string, pass string, checkInterval time.Dura
 	var err error
 	var virConn *libvirt.Connect
 
-	err = utilwait.PollImmediate(ConnectionInterval, ConnectionTimeout, func() (done bool, err error) {
+	err = utilwait.PollImmediate(ConnectionInterval, 1*time.Hour, func() (done bool, err error) {
 		virConn, err = newConnection(uri, user, pass)
 		if err != nil {
 			logger.V(1).Infof("Connecting to libvirt daemon failed: %v", err)

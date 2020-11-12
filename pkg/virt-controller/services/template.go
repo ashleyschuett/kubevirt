@@ -311,7 +311,9 @@ func (t *templateService) RenderLaunchManifest(vmi *v1.VirtualMachineInstance) (
 
 	var volumes []k8sv1.Volume
 	var volumeDevices []k8sv1.VolumeDevice
-	var userId int64 = 0
+	//	var userId int64 = 0
+	var nonRootUserId int64 = 1000
+	var nonRoot bool = true
 	var privileged bool = false
 	var volumeMounts []k8sv1.VolumeMount
 	var imagePullSecrets []k8sv1.LocalObjectReference
@@ -340,7 +342,7 @@ func (t *templateService) RenderLaunchManifest(vmi *v1.VirtualMachineInstance) (
 
 	volumeMounts = append(volumeMounts, k8sv1.VolumeMount{
 		Name:      "libvirt-runtime",
-		MountPath: "/var/run/libvirt",
+		MountPath: "/home/virt/.cache/libvirt",
 	})
 
 	// virt-launcher cmd socket dir
@@ -793,6 +795,7 @@ func (t *templateService) RenderLaunchManifest(vmi *v1.VirtualMachineInstance) (
 		"--hook-sidecars", strconv.Itoa(len(requestedHookSidecarList)),
 		"--less-pvc-space-toleration", strconv.Itoa(lessPVCSpaceToleration),
 		"--ovmf-path", ovmfPath,
+		"--run-as-nonroot",
 	}
 
 	useEmulation := t.clusterConfig.IsUseEmulation()
@@ -849,8 +852,9 @@ func (t *templateService) RenderLaunchManifest(vmi *v1.VirtualMachineInstance) (
 		Image:           t.launcherImage,
 		ImagePullPolicy: imagePullPolicy,
 		SecurityContext: &k8sv1.SecurityContext{
-			RunAsUser:  &userId,
-			Privileged: &privileged,
+			RunAsUser:    &nonRootUserId,
+			RunAsNonRoot: &nonRoot,
+			Privileged:   &privileged,
 			Capabilities: &k8sv1.Capabilities{
 				Add:  capabilities,
 				Drop: []k8sv1.Capability{CAP_NET_RAW},
@@ -970,6 +974,11 @@ func (t *templateService) RenderLaunchManifest(vmi *v1.VirtualMachineInstance) (
 			Command:         requestedHookSidecar.Command,
 			Args:            requestedHookSidecar.Args,
 			Resources:       resources,
+			SecurityContext: &k8sv1.SecurityContext{
+				RunAsUser:    &nonRootUserId,
+				RunAsNonRoot: &nonRoot,
+				Privileged:   &privileged,
+			},
 			VolumeMounts: []k8sv1.VolumeMount{
 				k8sv1.VolumeMount{
 					Name:      "hook-sidecar-sockets",
@@ -1049,9 +1058,14 @@ func (t *templateService) RenderLaunchManifest(vmi *v1.VirtualMachineInstance) (
 			Name:            "container-disk-binary",
 			Image:           t.launcherImage,
 			ImagePullPolicy: imagePullPolicy,
-			Command:         initContainerCommand,
-			VolumeMounts:    initContainerVolumeMounts,
-			Resources:       initContainerResources,
+			SecurityContext: &k8sv1.SecurityContext{
+				RunAsUser:    &nonRootUserId,
+				RunAsNonRoot: &nonRoot,
+				Privileged:   &privileged,
+			},
+			Command:      initContainerCommand,
+			VolumeMounts: initContainerVolumeMounts,
+			Resources:    initContainerResources,
 		}
 
 		initContainers = append(initContainers, cpInitContainer)
@@ -1074,8 +1088,9 @@ func (t *templateService) RenderLaunchManifest(vmi *v1.VirtualMachineInstance) (
 			Hostname:  hostName,
 			Subdomain: vmi.Spec.Subdomain,
 			SecurityContext: &k8sv1.PodSecurityContext{
-				RunAsUser: &userId,
-				FSGroup:   &t.launcherSubGid,
+				RunAsUser:    &nonRootUserId,
+				RunAsNonRoot: &nonRoot,
+				FSGroup:      &t.launcherSubGid,
 			},
 			TerminationGracePeriodSeconds: &gracePeriodKillAfter,
 			RestartPolicy:                 k8sv1.RestartPolicyNever,
