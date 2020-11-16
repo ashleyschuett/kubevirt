@@ -2020,9 +2020,9 @@ func (d *VirtualMachineController) processVmUpdate(origVMI *v1.VirtualMachineIns
 			criticalNetworkError, err := d.setPodNetworkPhase1(vmi)
 			if err != nil {
 				if criticalNetworkError {
-					return &virtLauncherCriticalNetworkError{fmt.Sprintf("failed to configure vmi network: %v", err)}
+					return &virtLauncherCriticalNetworkError{fmt.Sprintf("failed to configure vmi network 1: %v", err)}
 				} else {
-					return fmt.Errorf("failed to configure vmi network: %v", err)
+					return fmt.Errorf("failed to configure vmi network 2: %v", err)
 				}
 
 			}

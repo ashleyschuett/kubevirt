@@ -342,7 +342,7 @@ func (t *templateService) RenderLaunchManifest(vmi *v1.VirtualMachineInstance) (
 
 	volumeMounts = append(volumeMounts, k8sv1.VolumeMount{
 		Name:      "libvirt-runtime",
-		MountPath: "/home/virt/.cache/libvirt",
+		MountPath: "/var/run/libvirt",
 	})
 
 	// virt-launcher cmd socket dir
@@ -853,6 +853,7 @@ func (t *templateService) RenderLaunchManifest(vmi *v1.VirtualMachineInstance) (
 		ImagePullPolicy: imagePullPolicy,
 		SecurityContext: &k8sv1.SecurityContext{
 			RunAsUser:    &nonRootUserId,
+			RunAsGroup:   &nonRootUserId,
 			RunAsNonRoot: &nonRoot,
 			Privileged:   &privileged,
 			Capabilities: &k8sv1.Capabilities{
@@ -976,6 +977,7 @@ func (t *templateService) RenderLaunchManifest(vmi *v1.VirtualMachineInstance) (
 			Resources:       resources,
 			SecurityContext: &k8sv1.SecurityContext{
 				RunAsUser:    &nonRootUserId,
+				RunAsGroup:   &nonRootUserId,
 				RunAsNonRoot: &nonRoot,
 				Privileged:   &privileged,
 			},
@@ -1060,6 +1062,7 @@ func (t *templateService) RenderLaunchManifest(vmi *v1.VirtualMachineInstance) (
 			ImagePullPolicy: imagePullPolicy,
 			SecurityContext: &k8sv1.SecurityContext{
 				RunAsUser:    &nonRootUserId,
+				RunAsGroup:   &nonRootUserId,
 				RunAsNonRoot: &nonRoot,
 				Privileged:   &privileged,
 			},
@@ -1089,6 +1092,7 @@ func (t *templateService) RenderLaunchManifest(vmi *v1.VirtualMachineInstance) (
 			Subdomain: vmi.Spec.Subdomain,
 			SecurityContext: &k8sv1.PodSecurityContext{
 				RunAsUser:    &nonRootUserId,
+				RunAsGroup:   &nonRootUserId,
 				RunAsNonRoot: &nonRoot,
 				FSGroup:      &t.launcherSubGid,
 			},

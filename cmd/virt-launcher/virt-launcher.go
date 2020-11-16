@@ -46,7 +46,6 @@ import (
 	ephemeraldisk "kubevirt.io/kubevirt/pkg/ephemeral-disk"
 	"kubevirt.io/kubevirt/pkg/hooks"
 	"kubevirt.io/kubevirt/pkg/ignition"
-	vUtil "kubevirt.io/kubevirt/pkg/util"
 	cmdclient "kubevirt.io/kubevirt/pkg/virt-handler/cmd-client"
 	virtlauncher "kubevirt.io/kubevirt/pkg/virt-launcher"
 	notifyclient "kubevirt.io/kubevirt/pkg/virt-launcher/notify-client"
@@ -120,7 +119,7 @@ func createLibvirtConnection() virtcli.Connection {
 		libvirtUri = "qemu+unix:///session?socket=/home/virt/.cache/libvirt/libvirt-sock"
 	}
 
-	domainConn, err := virtcli.NewConnection(libvirtUri, "", "", 10*time.Second)
+	domainConn, err := virtcli.NewConnection(libvirtUri, "virt", "", 10*time.Second)
 	if err != nil {
 		panic(fmt.Sprintf("failed to connect to libvirtd: %v", err))
 	}
@@ -165,14 +164,27 @@ func initializeDirs(virtShareDir string,
 	mask := syscall.Umask(0)
 	defer syscall.Umask(mask)
 
-	err := virtlauncher.InitializePrivateDirectories(filepath.Join(vUtil.VirtPrivateDir, uid))
+	virPrivateDir := "/home/virt/.local/share/"
+
+	err := virtlauncher.InitializePrivateDirectories(filepath.Join(virPrivateDir, uid))
 
 	if err != nil {
+		fmt.Println(err)
+		time.Sleep(10 * time.Hour)
+		panic(err)
+	}
+
+	err = virtlauncher.InitializePrivateDirectories("/home/virt/.config/libvirt/")
+	if err != nil {
+		fmt.Println(err)
+		time.Sleep(10 * time.Hour)
 		panic(err)
 	}
 
 	err = cloudinit.SetLocalDirectory(ephemeralDiskDir + "/cloud-init-data")
 	if err != nil {
+		fmt.Println(err)
+		time.Sleep(10 * time.Hour)
 		panic(err)
 	}
 
@@ -183,36 +195,50 @@ func initializeDirs(virtShareDir string,
 
 	err = containerdisk.SetLocalDirectory(containerDiskDir)
 	if err != nil {
+		fmt.Println(err)
+		time.Sleep(10 * time.Hour)
 		panic(err)
 	}
 
 	err = ephemeraldisk.SetLocalDirectory(ephemeralDiskDir + "/disk-data")
 	if err != nil {
+		fmt.Println(err)
+		time.Sleep(10 * time.Hour)
 		panic(err)
 	}
 
-	err = virtlauncher.InitializeDisksDirectories(filepath.Join(vUtil.VirtPrivateDir, "vm-disks"))
+	err = virtlauncher.InitializeDisksDirectories(filepath.Join(virPrivateDir, "vm-disks"))
 	if err != nil {
+		fmt.Println(err)
+		time.Sleep(10 * time.Hour)
 		panic(err)
 	}
 
 	err = virtlauncher.InitializeDisksDirectories(config.ConfigMapDisksDir)
 	if err != nil {
+		fmt.Println(err)
+		time.Sleep(10 * time.Hour)
 		panic(err)
 	}
 
 	err = virtlauncher.InitializeDisksDirectories(config.SecretDisksDir)
 	if err != nil {
+		fmt.Println(err)
+		time.Sleep(10 * time.Hour)
 		panic(err)
 	}
 
 	err = virtlauncher.InitializeDisksDirectories(config.DownwardAPIDisksDir)
 	if err != nil {
+		fmt.Println(err)
+		time.Sleep(10 * time.Hour)
 		panic(err)
 	}
 
 	err = virtlauncher.InitializeDisksDirectories(config.ServiceAccountDiskDir)
 	if err != nil {
+		fmt.Println(err)
+		time.Sleep(10 * time.Hour)
 		panic(err)
 	}
 }
@@ -313,9 +339,9 @@ func cleanupContainerDiskDirectory(ephemeralDiskDir string) {
 
 func main() {
 	qemuTimeout := pflag.Duration("qemu-timeout", defaultStartTimeout, "Amount of time to wait for qemu")
-	virtShareDir := pflag.String("kubevirt-share-dir", "/home/virt/kubevirt", "Shared directory between virt-handler and virt-launcher")
-	ephemeralDiskDir := pflag.String("ephemeral-disk-dir", "/var/run/kubevirt-ephemeral-disks", "Base directory for ephemeral disk data")
-	containerDiskDir := pflag.String("container-disk-dir", "/home/virt/container-disks", "Base directory for container disk data")
+	virtShareDir := pflag.String("kubevirt-share-dir", "/home/virt/.local/share/kubevirt", "Shared directory between virt-handler and virt-launcher")
+	ephemeralDiskDir := pflag.String("ephemeral-disk-dir", "/home/virt/.local/share/kubevirt-ephemeral-disks", "Base directory for ephemeral disk data")
+	containerDiskDir := pflag.String("container-disk-dir", "/home/virt/.local/share/container-disks", "Base directory for container disk data")
 	name := pflag.String("name", "", "Name of the VirtualMachineInstance")
 	uid := pflag.String("uid", "", "UID of the VirtualMachineInstance")
 	namespace := pflag.String("namespace", "", "Namespace of the VirtualMachineInstance")
@@ -337,6 +363,8 @@ func main() {
 	pflag.Parse()
 
 	log.InitializeLogging("virt-launcher")
+
+	//	time.Sleep(8 * time.Hour)
 
 	if !*noFork {
 		exitCode, err := ForkAndMonitor(*containerDiskDir)
@@ -365,6 +393,8 @@ func main() {
 	l := util.NewLibvirtWraper(*runWithNonRoot)
 	err = l.SetupLibvirt()
 	if err != nil {
+		fmt.Println(err)
+		time.Sleep(8 * time.Hour)
 		panic(err)
 	}
 
@@ -464,6 +494,7 @@ func main() {
 	<-cmdServerDone
 
 	log.Log.Info("Exiting...")
+	time.Sleep(8 * time.Hour)
 }
 
 // ForkAndMonitor itself to give qemu an extra grace period to properly terminate

@@ -12,7 +12,6 @@ go_library(
         "//pkg/ephemeral-disk:go_default_library",
         "//pkg/hooks:go_default_library",
         "//pkg/ignition:go_default_library",
-        "//pkg/util:go_default_library",
         "//pkg/virt-handler/cmd-client:go_default_library",
         "//pkg/virt-launcher:go_default_library",
         "//pkg/virt-launcher/notify-client:go_default_library",
@@ -44,6 +43,32 @@ go_binary(
 
 load("@io_bazel_rules_docker//contrib:passwd.bzl", "passwd_entry", "passwd_tar")
 load("@bazel_tools//tools/build_defs/pkg:pkg.bzl", "pkg_tar")
+
+pkg_tar(
+    name = "qemu-allow",
+    srcs = [
+        ":bridge.conf",
+        ":virt.conf",
+        ":libvirt.conf",
+        ":qemu.conf",
+    ],
+    mode = "640",
+    owner = "1000.1000",
+    package_dir = "/home/virt/.cache/libvirt/qemu",
+)
+
+pkg_tar(
+    name = "qemu-kvm-allow",
+    srcs = [
+        ":bridge.conf",
+        ":virt.conf",
+        ":libvirt.conf",
+        ":qemu.conf",
+    ],
+    mode = "640",
+    owner = "1000.1000",
+    package_dir = "/etc/qemu-kvm",
+)
 
 passwd_entry(
     name = "virt",
@@ -162,6 +187,8 @@ container_image(
     tars = [
       ":passwd",
       ":group_tar",
+      ":qemu-allow",
+      ":qemu-kvm-allow",
       ],
     files = ["//:get-version"],
 )

@@ -70,7 +70,7 @@ const (
 
 	imagePullSecret = ""
 
-	virtShareDir = "/home/virt/kubevirt"
+	virtShareDir = "/var/run/kubevirt"
 
 	ephemeralDiskDir = virtShareDir + "-ephemeral-disks"
 

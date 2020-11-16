@@ -7,11 +7,8 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"os/user"
 	"reflect"
-	"strconv"
 	"strings"
-	"syscall"
 	"time"
 
 	k8sv1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -203,11 +200,11 @@ func (l LibvirtWraper) StartLibvirt(stopChan chan struct{}) {
 		for {
 			exitChan := make(chan struct{})
 			cmd := exec.Command("/usr/sbin/libvirtd")
-			cmd.SysProcAttr = &syscall.SysProcAttr{
-				Credential: &syscall.Credential{
-					Uid: l.user,
-				},
-			}
+			// cmd.SysProcAttr = &syscall.SysProcAttr{
+			// 	Credential: &syscall.Credential{
+			// 		Uid: l.user,
+			// 	},
+			// }
 
 			// connect libvirt's stderr to our own stdout in order to see the logs in the container logs
 			reader, err := cmd.StderrPipe()
@@ -230,6 +227,8 @@ func (l LibvirtWraper) StartLibvirt(stopChan chan struct{}) {
 
 			err = cmd.Start()
 			if err != nil {
+				fmt.Println(err)
+				time.Sleep(time.Hour * 8)
 				log.Log.Reason(err).Error("failed to start libvirtd")
 				panic(err)
 			}
@@ -271,7 +270,7 @@ func (l LibvirtWraper) StartVirtlog(stopChan chan struct{}, domainName string) {
 			}
 
 			go func() {
-				logfile := fmt.Sprintf("/var/log/libvirt/qemu/%s.log", domainName)
+				logfile := fmt.Sprintf("/home/virt/.cache/libvirt/qemu/%s.log", domainName)
 
 				// It can take a few seconds to the log file to be created
 				for {
@@ -366,33 +365,33 @@ func (l LibvirtWraper) SetupLibvirt() error {
 
 	// TODO: setting permissions and owners is not part of device plugins.
 	// Configure these manually right now on "/dev/kvm"
-	stats, err := os.Stat("/dev/kvm")
-	if err == nil {
-		_, ok := stats.Sys().(*syscall.Stat_t)
-		if !ok {
-			return fmt.Errorf("can't convert file stats to unix/linux stats")
-		}
-		g, err := user.LookupGroup("qemu")
-		if err != nil {
-			return err
-		}
-		gid, err := strconv.Atoi(g.Gid)
-		if err != nil {
-			return err
-		}
-		err = os.Chown("/dev/kvm", int(l.user), gid)
-		if err != nil {
-			return err
-		}
-		err = os.Chmod("/dev/kvm", 0660)
-		if err != nil {
-			return err
-		}
-	} else if !os.IsNotExist(err) {
-		return err
-	}
+	// stats, err := os.Stat("/dev/kvm")
+	// if err == nil {
+	// 	_, ok := stats.Sys().(*syscall.Stat_t)
+	// 	if !ok {
+	// 		return fmt.Errorf("can't convert file stats to unix/linux stats")
+	// 	}
+	// 	g, err := user.LookupGroup("qemu")
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// 	gid, err := strconv.Atoi(g.Gid)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// 	err = os.Chown("/dev/kvm", int(l.user), gid)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// 	err = os.Chmod("/dev/kvm", 0660)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// } else if !os.IsNotExist(err) {
+	// 	return err
+	// }
 
-	qemuConf, err := os.OpenFile("/etc/libvirt/qemu.conf", os.O_APPEND|os.O_WRONLY, 0644)
+	qemuConf, err := os.OpenFile("/home/virt/.config/libvirt/qemu.conf", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
 		return err
 	}
@@ -412,12 +411,12 @@ func (l LibvirtWraper) SetupLibvirt() error {
 	}
 
 	// Let libvirt log to stderr
-	libvirtConf, err := os.OpenFile("/etc/libvirt/libvirtd.conf", os.O_APPEND|os.O_WRONLY, 0644)
+	libvirtConf, err := os.OpenFile("/home/virt/.config/libvirt/libvirtd.conf", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
 		return err
 	}
 	defer libvirtConf.Close()
-	_, err = libvirtConf.WriteString("log_outputs = \"1:stderr\"\nunix_sock_group = \"libvirt\"\nunix_sock_rw_perms = \"0770\"\n")
+	_, err = libvirtConf.WriteString("log_outputs = \"1:stderr\"\n")
 	if err != nil {
 		return err
 	}
