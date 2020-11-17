@@ -36,16 +36,18 @@ import (
 	"kubevirt.io/kubevirt/pkg/util"
 )
 
-var containerDiskOwner = "qemu"
+var containerDiskOwner = "virt"
 
 var podsBaseDir = util.KubeletPodsDir
 
 var mountBaseDir = filepath.Join(util.VirtShareDir, "/container-disks")
 
+var launcherMountBaseDir = filepath.Join("/home/v", "/container-disks")
+
 type SocketPathGetter func(vmi *v1.VirtualMachineInstance, volumeIndex int) (string, error)
 
 func GetLegacyVolumeMountDirOnHost(vmi *v1.VirtualMachineInstance) string {
-	return filepath.Join(mountBaseDir, string(vmi.UID))
+	return filepath.Join(launcherMountBaseDir, string(vmi.UID))
 }
 
 func GetVolumeMountDirOnGuest(vmi *v1.VirtualMachineInstance) string {
@@ -89,7 +91,7 @@ func GetDiskTargetPathFromHostView(vmi *v1.VirtualMachineInstance, volumeIndex i
 }
 
 func GetDiskTargetPathFromLauncherView(volumeIndex int) string {
-	return filepath.Join(mountBaseDir, fmt.Sprintf("disk_%d.img", volumeIndex))
+	return filepath.Join(launcherMountBaseDir, fmt.Sprintf("disk_%d.img", volumeIndex))
 }
 
 func SetLocalDirectory(dir string) error {

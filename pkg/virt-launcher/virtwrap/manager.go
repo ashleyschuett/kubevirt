@@ -581,7 +581,7 @@ func (l *LibvirtDomainManager) setGuestTime(vmi *v1.VirtualMachineInstance, dom 
 }
 
 func getVMIEphemeralDisksTotalSize() *resource.Quantity {
-	var baseDir = "/var/run/kubevirt-ephemeral-disks/"
+	var baseDir = "/home/v/kubevirt-ephemeral-disks/"
 	totalSize := int64(0)
 	err := filepath.Walk(baseDir, func(path string, f os.FileInfo, err error) error {
 		if !f.IsDir() {

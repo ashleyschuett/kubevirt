@@ -164,7 +164,7 @@ func initializeDirs(virtShareDir string,
 	mask := syscall.Umask(0)
 	defer syscall.Umask(mask)
 
-	virPrivateDir := "/home/virt/.local/share/"
+	virPrivateDir := "/home/virt/.local/share/kubevirt-private"
 
 	err := virtlauncher.InitializePrivateDirectories(filepath.Join(virPrivateDir, uid))
 

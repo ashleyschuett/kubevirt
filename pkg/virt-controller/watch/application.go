@@ -70,9 +70,9 @@ const (
 
 	imagePullSecret = ""
 
-	virtShareDir = "/var/run/kubevirt"
+	virtShareDir = "/home/v"
 
-	ephemeralDiskDir = virtShareDir + "-ephemeral-disks"
+	ephemeralDiskDir = "/home/v/kubevirt-ephemeral-disks"
 
 	defaultControllerThreads = 3
 
@@ -84,7 +84,7 @@ const (
 )
 
 var (
-	containerDiskDir = filepath.Join(util.VirtShareDir, "/container-disks")
+	containerDiskDir = filepath.Join("/home/v", "/container-disks")
 
 	leaderGauge = prometheus.NewGauge(
 		prometheus.GaugeOpts{

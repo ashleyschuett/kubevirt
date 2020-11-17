@@ -80,7 +80,7 @@ func SingleClientDHCPServer(
 		options:       options,
 	}
 
-	l, err := NewUDP4FilterListener(serverIface, ":67")
+	l, err := NewUDP4FilterListener(serverIface, ":1025")
 	if err != nil {
 		return err
 	}
