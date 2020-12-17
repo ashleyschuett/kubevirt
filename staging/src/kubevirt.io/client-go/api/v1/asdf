@@ -1,0 +1,10 @@
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: kubevirt.io
+                operator: In
+                values:
+                - virt-launcher
+            topologyKey: kubernetes.io/hostname
