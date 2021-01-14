@@ -5,6 +5,7 @@ go_library(
     srcs = [
         "migration-create-admitter.go",
         "migration-update-admitter.go",
+        "node-admitter.go",
         "pod-eviction-admitter.go",
         "status-admitter.go",
         "vmi-create-admitter.go",
@@ -36,6 +37,7 @@ go_library(
         "//vendor/k8s.io/apimachinery/pkg/api/validation:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/labels:go_default_library",
+        "//vendor/k8s.io/apimachinery/pkg/selection:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/types:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/util/validation:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/util/validation/field:go_default_library",
@@ -51,6 +53,7 @@ go_test(
         "admitters_test.go",
         "migration-create-admitter_test.go",
         "migration-update-admitter_test.go",
+        "node-admitter_test.go",
         "pod-eviction-admitter_test.go",
         "vmi-create-admitter_test.go",
         "vmi-preset-admitter_test.go",

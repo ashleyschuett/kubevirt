@@ -216,6 +216,7 @@ func NewVirtAPIValidatingWebhookConfiguration(installNamespace string) *v1beta1.
 	vmPath := VMValidatePath
 	vmirsPath := VMIRSValidatePath
 	vmipresetPath := VMIPresetValidatePath
+	nodesValidatePath := NodesValidatePath
 	migrationCreatePath := MigrationCreateValidatePath
 	migrationUpdatePath := MigrationUpdateValidatePath
 	vmSnapshotValidatePath := VMSnapshotValidatePath
@@ -262,6 +263,28 @@ func NewVirtAPIValidatingWebhookConfiguration(installNamespace string) *v1beta1.
 						Namespace: installNamespace,
 						Name:      VirtApiServiceName,
 						Path:      &launcherEvictionValidatePath,
+					},
+				},
+			},
+			{
+				Name:          "nodes-update-validator.kubevirt.io",
+				FailurePolicy: &failurePolicy,
+				SideEffects:   &sideEffectNone,
+				Rules: []v1beta1.RuleWithOperations{{
+					Operations: []v1beta1.OperationType{
+						v1beta1.Update,
+					},
+					Rule: v1beta1.Rule{
+						APIGroups:   []string{""},
+						APIVersions: []string{"v1"},
+						Resources:   []string{"nodes"},
+					},
+				}},
+				ClientConfig: v1beta1.WebhookClientConfig{
+					Service: &v1beta1.ServiceReference{
+						Namespace: installNamespace,
+						Name:      VirtApiServiceName,
+						Path:      &nodesValidatePath,
 					},
 				},
 			},
@@ -520,6 +543,8 @@ const VMMutatePath = "/virtualmachines-mutate"
 const VMIMutatePath = "/virtualmachineinstances-mutate"
 
 const MigrationMutatePath = "/migration-mutate-create"
+
+const NodesValidatePath = "/nodes-validate-update"
 
 const VirtApiServiceName = "virt-api"
 

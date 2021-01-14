@@ -24,6 +24,7 @@ import (
 	"sync"
 
 	"github.com/golang/glog"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 
@@ -77,6 +78,12 @@ var KubeVirtGroupVersionResource = metav1.GroupVersionResource{
 	Group:    v1.KubeVirtGroupVersionKind.Group,
 	Version:  v1.KubeVirtGroupVersionKind.Version,
 	Resource: "kubevirts",
+}
+
+var NodeGroupVersionResource = metav1.GroupVersionResource{
+	Group:    corev1.SchemeGroupVersion.Group,
+	Version:  corev1.SchemeGroupVersion.Version,
+	Resource: "nodes",
 }
 
 type Informers struct {
