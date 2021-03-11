@@ -79,90 +79,6 @@ var _ = Describe("Validating KubeVirtUpdate Admitter", func() {
 		}
 	}
 
-	It("should accept workload update when no VMIS are running", func() {
-		kvAdmitter := getAdmitter(true, nil)
-		kv := getKV()
-		kvBytes, _ := json.Marshal(&kv)
-
-		cc := getComponentConfig()
-		kv.Spec.Workloads = &cc
-		kvUpdateBytes, _ := json.Marshal(&kv)
-
-		ar := &v1beta1.AdmissionReview{
-			Request: &v1beta1.AdmissionRequest{
-				Resource: webhooks.KubeVirtGroupVersionResource,
-				Object: runtime.RawExtension{
-					Raw: kvUpdateBytes,
-				},
-				OldObject: runtime.RawExtension{
-					Raw: kvBytes,
-				},
-				Operation: v1beta1.Update,
-			},
-		}
-
-		resp := kvAdmitter.Admit(ar)
-		Expect(resp.Allowed).To(BeTrue())
-	})
-
-	It("should reject workload update when VMIS are running", func() {
-		vmi := v1.NewMinimalVMI("testmigratevmiupdate")
-		kvAdmitter := getAdmitter(true, vmi)
-		kv := getKV()
-		kvBytes, _ := json.Marshal(&kv)
-
-		cc := getComponentConfig()
-		kv.Spec.Workloads = &cc
-		kvUpdateBytes, _ := json.Marshal(&kv)
-
-		ar := &v1beta1.AdmissionReview{
-			Request: &v1beta1.AdmissionRequest{
-				Resource: webhooks.KubeVirtGroupVersionResource,
-				Object: runtime.RawExtension{
-					Raw: kvUpdateBytes,
-				},
-				OldObject: runtime.RawExtension{
-					Raw: kvBytes,
-				},
-				Operation: v1beta1.Update,
-			},
-		}
-
-		resp := kvAdmitter.Admit(ar)
-		Expect(resp.Allowed).To(BeFalse())
-		Expect(len(resp.Result.Details.Causes)).To(Equal(1))
-	})
-
-	It("should accept KV update with VMIS running if workloads object is not changed", func() {
-		kvAdmitter := getAdmitter(false, nil)
-		kv := getKV()
-		cc := getComponentConfig()
-		kv.Spec.Workloads = &cc
-
-		kvBytes, _ := json.Marshal(&kv)
-
-		kv.ObjectMeta.Labels = map[string]string{
-			"kubevirt.io": "new-label",
-		}
-		kvUpdateBytes, _ := json.Marshal(&kv)
-
-		ar := &v1beta1.AdmissionReview{
-			Request: &v1beta1.AdmissionRequest{
-				Resource: webhooks.KubeVirtGroupVersionResource,
-				Object: runtime.RawExtension{
-					Raw: kvUpdateBytes,
-				},
-				OldObject: runtime.RawExtension{
-					Raw: kvBytes,
-				},
-				Operation: v1beta1.Update,
-			},
-		}
-
-		resp := kvAdmitter.Admit(ar)
-		Expect(resp.Allowed).To(BeTrue())
-	})
-
 	table.DescribeTable("test validateCustomizeComponents", func(cc v1.CustomizeComponents, expectedCauses int) {
 		causes := validateCustomizeComponents(cc)
 		Expect(len(causes)).To(Equal(expectedCauses))
@@ -226,6 +142,6 @@ var _ = Describe("Validating KubeVirtUpdate Admitter", func() {
 		Expect(resp.Allowed).To(BeFalse())
 		// 3 because empty type and resource, nonvalid JSON and can not change
 		// workload placement when vmi is running
-		Expect(len(resp.Result.Details.Causes)).To(Equal(2))
+		Expect(len(resp.Result.Details.Causes)).To(Equal(1))
 	})
 })
