@@ -59,7 +59,6 @@ const (
 type KubeVirtController struct {
 	clientset            kubecli.KubevirtClient
 	queue                workqueue.RateLimitingInterface
-	delayedQueueAdder    func(key interface{}, queue workqueue.RateLimitingInterface)
 	kubeVirtInformer     cache.SharedIndexInformer
 	recorder             record.EventRecorder
 	stores               util.Stores
@@ -120,9 +119,6 @@ func NewKubeVirtController(
 		installStrategyMap: make(map[string]*install.Strategy),
 		operatorNamespace:  operatorNamespace,
 		statusUpdater:      status.NewKubeVirtStatusUpdater(clientset),
-		delayedQueueAdder: func(key interface{}, queue workqueue.RateLimitingInterface) {
-			queue.AddAfter(key, defaultAddDelay)
-		},
 	}
 
 	c.kubeVirtInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -449,7 +445,7 @@ func (c *KubeVirtController) genericAddHandler(obj interface{}, expecter *contro
 		if expecter != nil {
 			expecter.CreationObserved(controllerKey)
 		}
-		c.delayedQueueAdder(controllerKey, c.queue)
+		c.queue.AddAfter(controllerKey, defaultAddDelay)
 	}
 }
 
@@ -471,7 +467,7 @@ func (c *KubeVirtController) genericUpdateHandler(old, cur interface{}, expecter
 
 	key, err := c.getKubeVirtKey()
 	if key != "" && err == nil {
-		c.delayedQueueAdder(key, c.queue)
+		c.queue.AddAfter(key, defaultAddDelay)
 	}
 	return
 }
@@ -532,7 +528,7 @@ func (c *KubeVirtController) enqueueKubeVirt(obj interface{}) {
 	if err != nil {
 		logger.Object(kv).Reason(err).Error("Failed to extract key from KubeVirt.")
 	}
-	c.delayedQueueAdder(key, c.queue)
+	c.queue.AddAfter(key, defaultAddDelay)
 }
 
 func (c *KubeVirtController) Run(threadiness int, stopCh <-chan struct{}) {

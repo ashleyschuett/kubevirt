@@ -32,7 +32,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/client-go/util/workqueue"
 
 	"kubevirt.io/kubevirt/pkg/certificates/triple/cert"
 
@@ -235,10 +234,6 @@ func (k *KubeVirtTestData) BeforeTest() {
 	k.stores.ConfigMapCache = k.informers.ConfigMap.GetStore()
 
 	k.controller = NewKubeVirtController(k.virtClient, k.apiServiceClient, k.kvInformer, k.recorder, k.stores, k.informers, NAMESPACE)
-	k.controller.delayedQueueAdder = func(key interface{}, queue workqueue.RateLimitingInterface) {
-		// no delay to speed up tests
-		queue.Add(key)
-	}
 
 	// Wrap our workqueue to have a way to detect when we are done processing updates
 	k.mockQueue = testutils.NewMockWorkQueue(k.controller.queue)
@@ -1231,6 +1226,7 @@ func (k *KubeVirtTestData) makeApiAndControllerReady() {
 			if exists {
 				makeDeploymentReady(obj)
 			}
+			time.Sleep(time.Second)
 		}
 	}
 
@@ -1244,7 +1240,7 @@ func (k *KubeVirtTestData) makePodDisruptionBudgetsReady() {
 		for !exists {
 			_, exists, _ = k.stores.PodDisruptionBudgetCache.GetByKey(NAMESPACE + pdbname)
 			if !exists {
-				time.Sleep(100 * time.Millisecond)
+				time.Sleep(time.Second)
 			}
 		}
 	}
@@ -1265,6 +1261,7 @@ func (k *KubeVirtTestData) makeHandlerReady() {
 			k.daemonSetSource.Modify(handlerNew)
 			k.mockQueue.Wait()
 		}
+		time.Sleep(time.Second)
 	}
 }
 
